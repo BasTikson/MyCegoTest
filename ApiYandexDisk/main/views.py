@@ -82,7 +82,6 @@ class Test(View):
 
 
 
-
         return JsonResponse(answer)
 
 
