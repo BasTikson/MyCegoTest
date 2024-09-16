@@ -3,6 +3,6 @@ from .views import *
 
 urlpatterns = [
     path('', GetApiResponse.as_view()),
-    path('viewsFiles', Test.as_view(), name="files")
+    path('viewsFiles', Test.as_view(), name="files"),
 
 ]

@@ -1,49 +1,87 @@
-import os
 import requests
-from dotenv import load_dotenv
+import os
 
-load_dotenv()
+class YandexDisk:
+    BASE_URL = 'https://cloud-api.yandex.net/v1/disk/public/resources'
 
-class YandexDiskClient:
-    BASE_URL = 'https://cloud-api.yandex.net/v1/disk'
+    def __init__(self, public_key: str, save_dir: str = 'downloads'):
+        self.public_key = public_key
+        self.save_dir = save_dir
 
-    def __init__(self):
-        self.oauth_token = os.getenv('YANDEX_OAUTH_TOKEN')
-        if not self.oauth_token:
-            raise ValueError("OAuth token is not set")
+        # Создаем директорию для сохранения файлов, если она не существует
+        if not os.path.exists(self.save_dir):
+            os.makedirs(self.save_dir)
 
-    def _make_request(self, method, url, params=None, data=None):
-        headers = {
-            'Authorization': f'OAuth {self.oauth_token}',
-            'Accept': 'application/json'
-        }
+    def _make_request(self, params=None):
+        url = self.BASE_URL
+        params = params or {}
+        params['public_key'] = self.public_key
 
-        response = requests.request(method, url, headers=headers, params=params, json=data)
+        response = requests.get(url, params=params)
         response.raise_for_status()
         return response.json()
 
-    def get_files_list(self):
-        url = f'{self.BASE_URL}/resources/files'
-        return self._make_request('GET', url)
+    def get_resource_info(self, path=None, sort=None, limit=None, preview_size=None, preview_crop=None, offset=None):
+        params = {
+            'path': path,
+            'sort': sort,
+            'limit': limit,
+            'preview_size': preview_size,
+            'preview_crop': preview_crop,
+            'offset': offset
+        }
+        return self._make_request(params)
 
-    def download_file(self, file_path):
-        url = f'{self.BASE_URL}/resources/download'
-        params = {'path': file_path}
-        response = self._make_request('GET', url, params=params)
-        download_url = response['href']
-        return requests.get(download_url)
+    def check_file_access(self):
+        """
+        Проверяет наличие файла и доступ по указанной ссылке.
+        Возвращает ответ с информацией о файле или ошибкой.
+        """
+        try:
+            resource_info = self.get_resource_info()
+            if 'error' in resource_info:
+                return {'status': 'error'}
+            return {'status': 'success'}
+        except requests.exceptions.RequestException as e:
+            return {'status': 'error', 'message': str(e)}
 
-# Пример использования
-# if __name__ == '__main__':
-#     client = YandexDiskClient()
-#
-#     # Получение списка файлов
-#     files = client.get_files_list()
-#     print("Список файлов:", files)
-#
-#     # Скачивание файла
-#     file_path = '/path/to/your/file.txt'
-#     file_response = client.download_file(file_path)
-#     with open('downloaded_file.txt', 'wb') as f:
-#         f.write(file_response.content)
-#     print("Файл успешно скачан")
+    def get_all_files(self, path=None, sort=None, limit=None, preview_size=None, preview_crop=None, offset=None):
+        resource_info = self.get_resource_info(path, sort, limit, preview_size, preview_crop, offset)
+        files = []
+
+        if '_embedded' in resource_info and 'items' in resource_info['_embedded']:
+            files.extend(resource_info['_embedded']['items'])
+
+        while '_embedded' in resource_info and 'next_href' in resource_info['_embedded']:
+            next_href = resource_info['_embedded']['next_href']
+            response = requests.get(next_href)
+            response.raise_for_status()
+            resource_info = response.json()
+            files.extend(resource_info['_embedded']['items'])
+
+        return files
+
+    def download_file(self, file_path, save_name=None):
+        url = 'https://cloud-api.yandex.net/v1/disk/public/resources/download'
+        params = {
+            'public_key': self.public_key,
+            'path': file_path
+        }
+
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        download_url = response.json()['href']
+
+        file_response = requests.get(download_url)
+        file_response.raise_for_status()
+
+        # Определяем имя файла для сохранения
+        if save_name:
+            save_path = os.path.join(self.save_dir, save_name)
+        else:
+            save_path = os.path.join(self.save_dir, os.path.basename(file_path))
+
+        with open(save_path, 'wb') as f:
+            f.write(file_response.content)
+
+        return save_path

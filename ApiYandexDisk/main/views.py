@@ -1,8 +1,14 @@
+from http.client import responses
+
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.views import View
 from django.urls import reverse
 import requests
+from django.http import FileResponse, Http404
+from .yandexService import YandexDisk
+import json
+import os
 
 
 class GetApiResponse(View):
@@ -13,11 +19,17 @@ class GetApiResponse(View):
 
     def post(self, request,  *args, **kwargs):
         redirect_url = reverse('files')
-        answer = {"status":"success", "url":redirect_url, "error": ""}
+        answer = {"status":"", "url":redirect_url, "error": ""}
         url_yandex = request.POST.get('url_yandex')
-        # Функция, котора будет стучаться по Yandex-му api и проверять на доступность и наличие файлов
+        ya = YandexDisk(url_yandex)
+        check = ya.check_file_access()
 
-
+        if check["status"] == "success":
+            answer["status"] = "success"
+            request.session['url_yandex'] = url_yandex
+        else:
+            answer["status"] = "error"
+            answer["error"] = "Упс, кажется вы ввели не ту ссылку!"
         return JsonResponse(answer)
 
 class Test(View):
@@ -27,7 +39,50 @@ class Test(View):
         return render(request, self.template_name)
 
     def post(self, request,  *args, **kwargs):
-        answer={}
+        action = request.POST["action"]
+        answer = {}
+        print("Post запрос пришел, action: ", action)
+        if action == "update":
+            public_key = request.session.get('url_yandex', None)
+            if public_key:
+                ya = YandexDisk(public_key)
+                files = ya.get_all_files()
+                list_file = []
+                for file in files:
+                    list_file.append({"name": file['name'], "path": file['path']})
+                answer["status"] = "success"
+                answer["files"] = list_file
+
+                return JsonResponse(answer)
+
+            else:
+                print("Нет сохраненного диска")
+
+        elif action == "downloadFiles":
+
+            public_key = request.session.get('url_yandex', None)
+            list_file = request.POST["listFiles"]
+            if public_key and list_file:
+                ya = YandexDisk(public_key)
+                list_file = json.loads(list_file)
+                for file in list_file:
+                    file_path = ya.download_file(file)
+
+
+
+
+                answer["status"] = "success"
+
+                return JsonResponse(answer)
+
+            else:
+                answer["status"] = "error"
+                answer["error"] = "Упс, не получилось скачать файлы!"
+                return JsonResponse(answer)
+
+
+
+
         return JsonResponse(answer)
 
 
@@ -35,25 +90,12 @@ class Test(View):
 
 
 
-# def fetch_yandex_api_sync(api_url, api_key, params=None):
-#     headers = {
-#         'Authorization': f'OAuth {api_key}',
-#         'Accept': 'application/json'
-#     }
-#
-#     try:
-#         response = requests.get(api_url, headers=headers, params=params)
-#         response.raise_for_status()  # Проверка на ошибки HTTP
-#         return response.json()
-#     except requests.exceptions.RequestException as e:
-#         print(f"Ошибка при запросе к API Яндекса: {e}")
-#         return None
-#
-# # Пример использования
-# api_url = 'https://api.example.com/endpoint'
-# api_key = 'your_api_key_here'
-# params = {'param1': 'value1', 'param2': 'value2'}
-#
-# result = fetch_yandex_api_sync(api_url, api_key, params)
-# if result:
-#     print(result)
+
+
+
+
+
+
+
+
+

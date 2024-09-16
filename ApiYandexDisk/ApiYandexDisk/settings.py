@@ -1,11 +1,9 @@
 from pathlib import Path
 import os
-from dotenv import load_dotenv
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-load_dotenv()
-YANDEX_OAUTH_TOKEN = os.getenv('YANDEX_OAUTH_TOKEN')
 SECRET_KEY = 'django-insecure-&ep^^akg$^4r2frqozdu(mp4l*0p-i1t_#jc!bubu%zx9oq64z'
 
 DEBUG = True

@@ -2,12 +2,10 @@
 """Django's command-line utility for administrative tasks."""
 import os
 import sys
-from manage_token import check_and_set_token
 
 
 def main():
     """Run administrative tasks."""
-    check_and_set_token()
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'ApiYandexDisk.settings')
     try:
         from django.core.management import execute_from_command_line
