@@ -4,6 +4,12 @@ import aiohttp
 import asyncio
 
 class YandexDisk:
+    """
+    Класс для работы с Yandex.Disk API.
+
+    :param public_key: Публичный ключ для доступа к ресурсам на Yandex.Disk.
+    :param save_dir: Директория для сохранения скачанных файлов (по умолчанию 'downloads').
+    """
     BASE_URL = 'https://cloud-api.yandex.net/v1/disk/public/resources'
 
     def __init__(self, public_key: str, save_dir: str = 'downloads'):
@@ -14,7 +20,14 @@ class YandexDisk:
         if not os.path.exists(self.save_dir):
             os.makedirs(self.save_dir)
 
-    def _make_request(self, params=None):
+    def _make_request(self, params=None) -> dict:
+        """
+        Выполняет HTTP GET-запрос к Yandex.Disk API.
+
+        :param params: Параметры запроса.
+        :return: JSON-ответ от сервера.
+        :raises requests.exceptions.RequestException: В случае ошибки запроса.
+        """
         url = self.BASE_URL
         params = params or {}
         params['public_key'] = self.public_key
@@ -23,7 +36,18 @@ class YandexDisk:
         response.raise_for_status()
         return response.json()
 
-    def get_resource_info(self, path=None, sort=None, limit=None, preview_size=None, preview_crop=None, offset=None):
+    def get_resource_info(self, path=None, sort=None, limit=None, preview_size=None, preview_crop=None, offset=None) -> dict:
+        """
+        Получает информацию о ресурсе на Yandex.Disk.
+
+        :param path: Путь к ресурсу.
+        :param sort: Параметр сортировки.
+        :param limit: Ограничение на количество элементов.
+        :param preview_size: Размер превью.
+        :param preview_crop: Обрезка превью.
+        :param offset: Смещение.
+        :return: JSON-ответ с информацией о ресурсе.
+        """
         params = {
             'path': path,
             'sort': sort,
@@ -34,10 +58,12 @@ class YandexDisk:
         }
         return self._make_request(params)
 
-    def check_file_access(self):
+    def check_file_access(self) -> dict:
         """
         Проверяет наличие файла и доступ по указанной ссылке.
         Возвращает ответ с информацией о файле или ошибкой.
+
+        :return: Словарь с результатом проверки.
         """
         try:
             resource_info = self.get_resource_info()
@@ -47,7 +73,18 @@ class YandexDisk:
         except requests.exceptions.RequestException as e:
             return {'status': 'error', 'message': str(e)}
 
-    def get_all_files(self, path=None, sort=None, limit=None, preview_size=None, preview_crop=None, offset=None):
+    def get_all_files(self, path=None, sort=None, limit=None, preview_size=None, preview_crop=None, offset=None) -> list:
+        """
+        Получает список всех файлов на Yandex.Disk.
+
+        :param path: Путь к ресурсу.
+        :param sort: Параметр сортировки.
+        :param limit: Ограничение на количество элементов.
+        :param preview_size: Размер превью.
+        :param preview_crop: Обрезка превью.
+        :param offset: Смещение.
+        :return: Список файлов.
+        """
         resource_info = self.get_resource_info(path, sort, limit, preview_size, preview_crop, offset)
         files = []
 
@@ -63,8 +100,14 @@ class YandexDisk:
 
         return files
 
+    async def download_file(self, file_path: str, save_name: str = None) -> str:
+        """
+        Асинхронно скачивает файл с Yandex.Disk.
 
-    async def download_file(self, file_path, save_name=None):
+        :param file_path: Путь к файлу на Yandex.Disk.
+        :param save_name: Имя файла для сохранения (по умолчанию используется имя файла на Yandex.Disk).
+        :return: Имя сохраненного файла.
+        """
         url = 'https://cloud-api.yandex.net/v1/disk/public/resources/download'
         params = {
             'public_key': self.public_key,
@@ -88,8 +131,14 @@ class YandexDisk:
                 with open(save_path, 'wb') as f:
                     f.write(await file_response.read())
 
-                return save_path
+                return os.path.basename(save_path)
 
-    async def download_files(self, file_paths):
+    async def download_files(self, file_paths: list) -> list:
+        """
+        Асинхронно скачивает несколько файлов с Yandex.Disk.
+
+        :param file_paths: Список путей к файлам на Yandex.Disk.
+        :return: Список имен сохраненных файлов.
+        """
         tasks = [self.download_file(file_path) for file_path in file_paths]
         return await asyncio.gather(*tasks)

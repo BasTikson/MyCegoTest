@@ -44,8 +44,7 @@ $(document).ready(function () {
         </div>
     `;
 
-        // Вставляем HTML-блок и скрытый div в нужный контейнер
-        var container = $('.file-manager-container'); // Замените на селектор вашего контейнера
+        var container = $('.file-manager-container');
         container.append(fileItemHtml);
     }
 
@@ -57,26 +56,20 @@ $(document).ready(function () {
             var filePath = filePathDiv.text();
 
             if (checkbox.is(':checked')) {
-                // Если чекбокс выбран, добавляем путь в список selected_files
                 if (!selected_files.includes(filePath)) {
                     selected_files.push(filePath);
                 }
             } else {
-                // Если чекбокс снят, удаляем путь из списка selected_files
                 var index = selected_files.indexOf(filePath);
                 if (index !== -1) {
                     selected_files.splice(index, 1);
                 }
             }
-
-            // Выводим текущий список выбранных файлов (для отладки)
-            console.log('Selected Files:', selected_files);
         });
     }
 
     // Скачивание файлов
     function DownloadFiles() {
-        // Блокируем кнопку и показываем кружочек с загрузкой
         const downloadButton = document.getElementById('downloadFilesButton');
         const backButton = document.getElementById('backButton');
         const spinner = document.getElementById('downloadFilesSpinner');
@@ -87,7 +80,7 @@ $(document).ready(function () {
         let data = new FormData();
         data.append('csrfmiddlewaretoken', $('input[name="csrfmiddlewaretoken"]').attr('value'));
         data.append('action', 'downloadFiles');
-        data.append('listFiles', JSON.stringify(selected_files)); // Преобразуем массив в строку JSON
+        data.append('listFiles', JSON.stringify(selected_files));
 
         var Url = window.location.href;
 
@@ -96,12 +89,9 @@ $(document).ready(function () {
             body: data
         })
             .then(res => {
-                // Проверяем, что ответ успешный
                 if (res.ok) {
-                    // Возвращаем Blob объект
                     return res.blob();
                 } else {
-                    // Если ответ не успешный, выбрасываем ошибку
                     throw new Error('Ошибка при загрузке файла');
                 }
             })
@@ -120,12 +110,10 @@ $(document).ready(function () {
                 console.error('Ошибка при загрузке файла:', error);
             })
             .finally(() => {
-                // Разблокируем кнопку и скрываем кружочек с загрузкой
                 downloadButton.disabled = false;
                 backButton.disabled = false;
                 spinner.style.display = 'none';
 
-                // Очистка массива выбранных файлов
                 $('.custom-control-input').prop('checked', false);
                 selected_files = [];
 
@@ -134,7 +122,6 @@ $(document).ready(function () {
 
     function StartAction() {
         handleCheckboxChange();
-        // Вешаем действие на кнопку
         $('#downloadFilesButton').click(DownloadFiles);
     }
 
