@@ -1,4 +1,5 @@
 Запуск проекта
+
 1.Выполните git clone https://github.com/BasTikson/MyCegoTest.git
 
 2.Установка необходимых инструментов.
