@@ -83,7 +83,6 @@ class Test(View):
                 answer["error"] = "Нет сохраненного диска"
                 return JsonResponse(answer)
 
-
         elif action == "downloadFiles":
             public_key = request.session.get('url_yandex', None)
             list_file = request.POST.get("listFiles")
