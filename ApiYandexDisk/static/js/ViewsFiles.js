@@ -76,6 +76,14 @@ $(document).ready(function () {
 
     // Скачивание файлов
     function DownloadFiles() {
+        // Блокируем кнопку и показываем кружочек с загрузкой
+        const downloadButton = document.getElementById('downloadFilesButton');
+        const backButton = document.getElementById('backButton');
+        const spinner = document.getElementById('downloadFilesSpinner');
+        downloadButton.disabled = true;
+        backButton.disabled = true;
+        spinner.style.display = 'inline-block';
+
         let data = new FormData();
         data.append('csrfmiddlewaretoken', $('input[name="csrfmiddlewaretoken"]').attr('value'));
         data.append('action', 'downloadFiles');
@@ -87,16 +95,40 @@ $(document).ready(function () {
             method: 'POST',
             body: data
         })
-            .then(res => res.json())
             .then(res => {
-                if (res.status === 'success') {
-                    console.log("Файлы успешно скачены");
+                // Проверяем, что ответ успешный
+                if (res.ok) {
+                    // Возвращаем Blob объект
+                    return res.blob();
                 } else {
-                    console.log("Произошла ошибка при попытке скачать файлы");
+                    // Если ответ не успешный, выбрасываем ошибку
+                    throw new Error('Ошибка при загрузке файла');
                 }
             })
+            .then(blob => {
+                // Создаем ссылку для скачивания файла
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'downloaded_file.zip'; // Укажите имя файла по умолчанию
+                document.body.appendChild(a);
+                a.click();
+                a.remove(); // Удаляем ссылку после скачивания
+                window.URL.revokeObjectURL(url); // Освобождаем URL объект
+            })
             .catch(error => {
-                console.error('Ошибка при обновлении страницы "/viewsFiles" :', error);
+                console.error('Ошибка при загрузке файла:', error);
+            })
+            .finally(() => {
+                // Разблокируем кнопку и скрываем кружочек с загрузкой
+                downloadButton.disabled = false;
+                backButton.disabled = false;
+                spinner.style.display = 'none';
+
+                // Очистка массива выбранных файлов
+                $('.custom-control-input').prop('checked', false);
+                selected_files = [];
+
             });
     }
 

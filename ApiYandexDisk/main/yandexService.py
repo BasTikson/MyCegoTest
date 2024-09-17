@@ -1,5 +1,7 @@
 import requests
 import os
+import aiohttp
+import asyncio
 
 class YandexDisk:
     BASE_URL = 'https://cloud-api.yandex.net/v1/disk/public/resources'
@@ -61,27 +63,33 @@ class YandexDisk:
 
         return files
 
-    def download_file(self, file_path, save_name=None):
+
+    async def download_file(self, file_path, save_name=None):
         url = 'https://cloud-api.yandex.net/v1/disk/public/resources/download'
         params = {
             'public_key': self.public_key,
             'path': file_path
         }
 
-        response = requests.get(url, params=params)
-        response.raise_for_status()
-        download_url = response.json()['href']
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, params=params) as response:
+                response.raise_for_status()
+                download_url = (await response.json())['href']
 
-        file_response = requests.get(download_url)
-        file_response.raise_for_status()
+            async with session.get(download_url) as file_response:
+                file_response.raise_for_status()
 
-        # Определяем имя файла для сохранения
-        if save_name:
-            save_path = os.path.join(self.save_dir, save_name)
-        else:
-            save_path = os.path.join(self.save_dir, os.path.basename(file_path))
+                # Определяем имя файла для сохранения
+                if save_name:
+                    save_path = os.path.join(self.save_dir, save_name)
+                else:
+                    save_path = os.path.join(self.save_dir, os.path.basename(file_path))
 
-        with open(save_path, 'wb') as f:
-            f.write(file_response.content)
+                with open(save_path, 'wb') as f:
+                    f.write(await file_response.read())
 
-        return save_path
+                return save_path
+
+    async def download_files(self, file_paths):
+        tasks = [self.download_file(file_path) for file_path in file_paths]
+        return await asyncio.gather(*tasks)
